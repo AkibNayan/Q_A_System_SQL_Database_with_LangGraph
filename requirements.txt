@@ -1,0 +1,8 @@
+langchain
+langgraph
+langchain-core
+langgraph-cli[inmem]
+langchain[huggingface]
+transformers
+torch
+accelerate
