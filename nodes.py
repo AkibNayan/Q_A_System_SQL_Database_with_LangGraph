@@ -12,19 +12,20 @@ get_schema_node = ToolNode([get_schema_tool], name="get_schema")
 run_query_tool = next(tool for tool in tools if tool.name == "sql_db_query")
 run_query_node = ToolNode([run_query_tool], name="run_query")
 
+
 # Example: Create a predetermined tool call
 def list_tables(state: MessagesState):
     tool_call = {
         "name": "sql_db_list_tables",
         "args": {},
         "id": "abc123",
-        "type": "tool_call"
+        "type": "tool_call",
     }
     tool_call_message = AIMessage(content="", tool_calls=[tool_call])
     list_tables_tool = next(tool for tool in tools if tool.name == "sql_db_list_tables")
     tool_message = list_tables_tool.invoke(tool_call)
     response = AIMessage(f"Available tables: {tool_message.content}")
-    
+
     return {"messages": [tool_call_message, tool_message, response]}
 
 
@@ -34,7 +35,7 @@ def call_get_schema(state: MessagesState):
     # as well as 'tool_choice=<string name of tool>'
     llm_with_tools = llm.bind_tools([get_schema_tool], tool_choice="any")
     response = llm_with_tools.invoke(state["messages"])
-    
+
     return {"messages": [response]}
 
 
@@ -51,21 +52,16 @@ only ask for relevant columns given the question.
 
 Do not make any DML statements (INSERT, UPDATE, DELETE, DROP etc) to the
 database.
-""".format(
-    dialect="sqlite",
-    top_k=5
-)
+""".format(dialect="sqlite", top_k=5)
+
 
 def generate_query(state: MessagesState):
-    system_message = {
-        "role": "system",
-        "content": generate_query_system_prompt
-    }
+    system_message = {"role": "system", "content": generate_query_system_prompt}
     # We do not for a tool call here, to allow the model to
     # respond naturally when it obtains the solution
     llm_with_tools = llm.bind_tools([run_query_tool])
     response = llm_with_tools.invoke([system_message] + state["messages"])
-    
+
     return {"messages": [response]}
 
 
@@ -85,21 +81,17 @@ If there are any of the above mistakes, rewrite the query. If there are no mista
 just reproduce the original query.
 
 You will call the appropriate tool to execute the query after running this check.
-""".format(
-    dialect="sqlite"
-)
+""".format(dialect="sqlite")
+
 
 def check_query(state: MessagesState):
-    system_message = {
-        "role": "system",
-        "content": check_query_system_prompt
-    }
-    
+    system_message = {"role": "system", "content": check_query_system_prompt}
+
     # Generate an artificial user message to check
     tool_call = state["messages"][-1].tool_calls[0]
     user_message = {"role": "user", "content": tool_call["args"]["query"]}
     llm_with_tools = llm.bind_tools([run_query_tool], tool_choice="any")
     response = llm_with_tools.invoke([system_message, user_message])
     response.id = state["messages"][-1].id
-    
+
     return {"messages": [response]}
