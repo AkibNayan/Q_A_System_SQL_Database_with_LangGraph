@@ -6,3 +6,5 @@ langchain[huggingface]
 transformers
 torch
 accelerate
+langchain-huggingface
+huggingface-hub
